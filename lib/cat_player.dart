@@ -1,6 +1,9 @@
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/flame.dart';
+import 'package:flame/particles.dart';
+import 'package:flutter/material.dart';
+import 'dart:math';
 
 enum CatState {
   idle,
@@ -50,6 +53,8 @@ class CatPlayer extends SpriteAnimationGroupComponent<CatState>
     } else if (_tapCount >= 3) {
       current = CatState.hurt;
     }
+
+    _spawnBurst(event.canvasPosition);
   }
 
   void reset() {
@@ -58,5 +63,40 @@ class CatPlayer extends SpriteAnimationGroupComponent<CatState>
   }
 
   bool get isDead => current == CatState.dead && animationTicker!.done();
-}
 
+  void _spawnBurst(Vector2 worldPosition) {
+    final parentComponent = parent;
+    if (parentComponent == null) {
+      return;
+    }
+
+    final random = Random();
+    final particle = Particle.generate(
+      count: 18,
+      lifespan: 0.35,
+      generator: (_) {
+        final angle = random.nextDouble() * pi * 2;
+        final speed = 80 + random.nextDouble() * 160;
+        final velocity = Vector2(cos(angle), sin(angle)) * speed;
+
+        return AcceleratedParticle(
+          speed: velocity,
+          acceleration: -velocity * 3,
+          child: CircleParticle(
+            radius: 3 + random.nextDouble() * 2.5,
+            paint: Paint()
+              ..color = Colors.orangeAccent.withAlpha(200),
+          ),
+        );
+      },
+    );
+
+    parentComponent.add(
+      ParticleSystemComponent(
+        position: worldPosition,
+        particle: particle,
+        priority: 1,
+      ),
+    );
+  }
+}
