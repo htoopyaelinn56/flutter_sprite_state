@@ -4,6 +4,7 @@ import 'package:flame/flame.dart';
 import 'package:flame/particles.dart';
 import 'package:flutter/material.dart';
 import 'dart:math';
+import 'dart:ui';
 
 enum CatState {
   idle,
@@ -71,32 +72,61 @@ class CatPlayer extends SpriteAnimationGroupComponent<CatState>
     }
 
     final random = Random();
-    final particle = Particle.generate(
-      count: 18,
-      lifespan: 0.35,
+    final palette = <Color>[
+      Colors.deepOrangeAccent,
+      Colors.orangeAccent,
+      Colors.amber,
+      Colors.yellow,
+    ];
+
+    final burst = Particle.generate(
+      count: 28,
+      lifespan: 0.45,
       generator: (_) {
         final angle = random.nextDouble() * pi * 2;
-        final speed = 80 + random.nextDouble() * 160;
+        final speed = 140 + random.nextDouble() * 240;
         final velocity = Vector2(cos(angle), sin(angle)) * speed;
+        final color = palette[random.nextInt(palette.length)];
 
         return AcceleratedParticle(
           speed: velocity,
           acceleration: -velocity * 3,
           child: CircleParticle(
-            radius: 3 + random.nextDouble() * 2.5,
+            radius: 2 + random.nextDouble() * 3.5,
             paint: Paint()
-              ..color = Colors.orangeAccent.withAlpha(200),
+              ..color = color.withAlpha(220)
+              ..blendMode = BlendMode.plus,
           ),
         );
       },
     );
 
-    parentComponent.add(
+    final shockwave = ComputedParticle(
+      lifespan: 0.35,
+      renderer: (canvas, particle) {
+        final eased = Curves.easeOut.transform(particle.progress);
+        final radius = lerpDouble(8, 70, eased)!;
+        final stroke = lerpDouble(4, 0.5, eased)!;
+        final paint = Paint()
+          ..color = Colors.deepOrange.withOpacity(1 - eased)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke
+          ..blendMode = BlendMode.plus;
+        canvas.drawCircle(Offset.zero, radius, paint);
+      },
+    );
+
+    parentComponent.addAll([
       ParticleSystemComponent(
         position: worldPosition,
-        particle: particle,
-        priority: 1,
+        particle: burst,
+        priority: 2,
       ),
-    );
+      ParticleSystemComponent(
+        position: worldPosition,
+        particle: shockwave,
+        priority: 3,
+      ),
+    ]);
   }
 }
